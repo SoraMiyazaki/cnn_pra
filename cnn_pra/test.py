@@ -3,12 +3,8 @@ import matplotlib.pyplot as plt
 import glob
 import cv2
 import time
-
-# 複数画像の読み込み
-files_u_d = sorted(glob.glob("/Volumes/Untitled/CNN_pra/上から_遠目の画像/case04/*.jpg"), reverse=False)
-files_u_s = sorted(glob.glob("/Volumes/Untitled/CNN_pra/上から_近目の画像/case04/*.jpg"), reverse=False)
-# files_h_d = sorted(glob.glob("/Volumes/Untitled/CNN_pra/水平_遠目の画像/case04/*.jpg"), reverse=False)
-files_h_s = sorted(glob.glob("/Volumes/Untitled/CNN_pra/水平_近目の画像/case04/*.jpg"), reverse=False)
+from multiprocessing import Pool
+import argparse
 
 # 波線の調整
 def flat(diff2_min): 
@@ -49,31 +45,31 @@ def draw_line(file, out_image):
     # キャニー
     edges = cv2.Canny(blur,100,200)
 
-    cv2.imwrite("resize.jpg", img_resize)
-    cv2.imwrite("blur.jpg", blur)
-    cv2.imwrite("edges.jpg", edges)
-    
-        
+    # cv2.imwrite("resize.jpg", img_resize)
+    # cv2.imwrite("blur.jpg", blur)
+    # cv2.imwrite("edges.jpg", edges)
+
+
     for i in range(img_resize.shape[1]):
         pixel = blur[:, i]
 
         # 一階微分
-        diff1 = []
-        for j in range(len(pixel)-1):
-            first_diff = (int(pixel[j+1]) - int(pixel[j])) / dy
-            diff1.append(first_diff)
+        diff1 = [(int(pixel[j+1]) - int(pixel[j])) / dy for j in range(len(pixel)-1)]
+        #for j in range(len(pixel)-1):
+        #    first_diff = (int(pixel[j+1]) - int(pixel[j])) / dy
+        #    diff1.append(first_diff)
 
         # 二階微分
-        diff2 = []
-        for k in range(1, len(diff1)-1):
-            second_diff = (int(diff1[k-1]) - int([n*2 for n in diff1][k]) + int(diff1[k+1])) / dy ** 2
-            diff2.append(second_diff)
+        diff2 = [(int(diff1[k-1]) - int([n*2 for n in diff1][k]) + int(diff1[k+1])) / dy ** 2 for k in range(1, len(diff1)-1)]
+        #for k in range(1, len(diff1)-1):
+        #    second_diff = (int(diff1[k-1]) - int([n*2 for n in diff1][k]) + int(diff1[k+1])) / dy ** 2
+        #    diff2.append(second_diff)
 
         # 二階微分後の最小値のy座標を取得
         diff2_min.append(diff2.index(min(diff2)))      
 
     res = diff2_min            
-    for _ in range(1500):
+    for _ in range(2000):
         res = flat(res)
 
     # 移動平均
@@ -87,60 +83,62 @@ def draw_line(file, out_image):
 
     fig = plt.figure(figsize=(5.12, 2.5))
     ax = fig.add_subplot(1, 1, 1)
-    im = cv2.imread("/Users/miyazakisora/Python/cnn_pra/resize.jpg", 0)
-    ax.imshow(im, cmap="gray")
+    # im = cv2.imread("/Users/miyazakisora/Python/cnn_pra/resize.jpg", 0)
+    ax.imshow(img_resize, cmap="gray")
     ax.plot(y_array, res_ma, "r")
     ax.axis("off")
     fig.subplots_adjust(left=0, right=1, bottom=0, top=1)
     plt.xlim(0, 512)
-    plt.ylim(225, 0)
+    plt.ylim(250, 0)
     plt.savefig(out_image)
     plt.close()
 
-# num = 0
-# time_sta = time.time()
-# for i in range(len(files_h_d)):
-#     if i == 0:
-#         print("水平・遠目")
-#     num += 1
-#     print(num, "枚目")
-#     draw_line(files_h_d[i], "/Volumes/Untitled/CNN_pra/waveline_h_d/hd04_" + str(i+1)+ ".jpg")
-# time_end = time.time()
-# Time = (time_end - time_sta) / 60
-# print(Time, "m")
+    print(f"exit: {out_image}")
 
-num = 0
-time_sta = time.time()
-for i in range(len(files_h_s)):
-    if i == 0:
-        print("水平・近目")
-    num += 1
-    print(num, "枚目")
-    draw_line(files_h_s[i], f"/Volumes/Untitled/CNN_pra/waveline_h_s/hs04_{i+1}.jpg")
-time_end = time.time()
-Time = (time_end - time_sta) / 60
-print(Time, "m")
+def draw_line_batch(args):
+    draw_line(*args)
 
-num = 0
-time_sta = time.time()
-for i in range(len(files_u_d)):
-    if i == 0:
-        print("上部・遠目")
-    num += 1
-    print(num, "枚目")
-    draw_line(files_u_d[i], f"/Volumes/Untitled/CNN_pra/waveline_u_d/ud04_{i+1}.jpg")
-time_end = time.time()
-Time = (time_end - time_sta) / 60
-print(Time, "m")
+def main(case, multi):
+    time_sta = time.time()
+    argslist = []
+    # 複数画像の読み込み
+    files_h_d = sorted(glob.glob(f"/Volumes/Untitled/CNN_pra/水平_遠目の画像/case{case:02}/*.jpg"), reverse=False)
+    files_h_s = sorted(glob.glob(f"/Volumes/Untitled/CNN_pra/水平_近目の画像/case{case:02}/*.jpg"), reverse=False)
+    files_u_d = sorted(glob.glob(f"/Volumes/Untitled/CNN_pra/上から_遠目の画像/case{case:02}/*.jpg"), reverse=False)
+    files_u_s = sorted(glob.glob(f"/Volumes/Untitled/CNN_pra/上から_近目の画像/case{case:02}/*.jpg"), reverse=False)
 
-num = 0
-time_sta = time.time()
-for i in range(len(files_u_s)):
-    if i == 0:
-        print("上部・近目")
-    num += 1
-    print(num, "枚目")
-    draw_line(files_u_s[i], f"/Volumes/Untitled/CNN_pra/waveline_u_s/us04_{i+1}.jpg")    
-time_end = time.time()
-Time = (time_end - time_sta) / 60
-print(Time, "m")
+    for i in range(len(files_h_d)):
+        argslist.append([files_h_d[i], f"/Volumes/Untitled/CNN_pra/waveline_h_d/whd{case:02}_{i+1}.jpg"])
+    for i in range(len(files_h_s)):
+        argslist.append([files_h_s[i], f"/Volumes/Untitled/CNN_pra/waveline_h_s/whs{case:02}_{i+1}.jpg"])
+    for i in range(len(files_u_d)):
+        argslist.append([files_u_d[i], f"/Volumes/Untitled/CNN_pra/waveline_u_d/wud{case:02}_{i+1}.jpg"])
+    for i in range(len(files_u_s)):
+        argslist.append([files_u_s[i], f"/Volumes/Untitled/CNN_pra/waveline_u_s/wus{case:02}_{i+1}.jpg"])
+
+    if multi:
+        with Pool(4) as pp:
+            pp.map(draw_line_batch, argslist)
+    else:
+        for args in argslist:
+            draw_line(*args)
+            
+    time_end = time.time()
+    Time = (time_end - time_sta) / 60
+    print(Time, "m")
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='')
+    parser.add_argument("-s", "--start", type=int, default=1)
+    parser.add_argument("-c", "--case", type=int)
+    parser.add_argument("--multi", action="store_true")
+    args = parser.parse_args()
+
+    if args.case is not None and 1<=args.case and args.case<=10:
+        main(args.case, args.multi)
+    else:
+        for case in range(args.start, 11):
+            main(case, args.multi)
+            if case != 10:
+                time.sleep(300)
+    
