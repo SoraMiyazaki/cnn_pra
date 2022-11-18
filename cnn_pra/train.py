@@ -1,43 +1,67 @@
-import torch
 import time
 
+import torch
 from tqdm import tqdm
 from torch.utils.data import DataLoader
-import torchvision
-from dataset.poc import CustomImageDataset
-from torchvision.models.segmentation import fcn_resnet50
-from lossfunc.lossfunc import LossFunc
+from torchvision.models.densenet import DenseNet
 
+from dataset.poc import CustomImageDataset
+from loss.lossfunc import LossFunc
 
 lr = 0.001
-epochs = 10000
-batch_size = 64
+epochs = 1000
+batch_size = 32
 max_endure = 10
+datapath = "../data/poc/dataset.csv"
+img_dir = "../data/poc/"
 device = "cuda" if torch.cuda.is_available() else "cpu"
-train_ds = CustomImageDataset("F:/CNN_pra/data/poc/dataset.csv")
+train_ds = CustomImageDataset(datapath, img_dir)
 train_dl = DataLoader(train_ds, batch_size=batch_size)
-model = fcn_resnet50(num_classes=2).to(device)
+model = DenseNet(num_classes=250).to(device)
 optim = torch.optim.SGD(model.parameters(), lr)
 lossfunc = LossFunc()
-model.train()
 
+model.train()
 hist = []
 best_loss = None
 best_statedict = None
+
 for epoch in tqdm(range(epochs)):
     
-    for feature, truth in train_dl:
-        time_sta = time.time()
+    for feature, truth in tqdm(train_dl):
+        # time_sta = time.time()
+
         feature = feature.to(device)
         truth = truth.to(device)
         pred = model(feature)
+
+        # time_end = time.time()
+        # print(time_end - time_sta)
+        # time_sta = time.time()
+
         loss = lossfunc(pred, truth)
-        print(loss)
+
+        # time_end = time.time()
+        # print(time_end - time_sta)
+        # time_sta = time.time()
+
         optim.zero_grad()
+
+        # time_end = time.time()
+        # print(time_end - time_sta)
+        # time_sta = time.time()
+
         loss.backward()
+
+        # time_end = time.time()
+        # print(time_end - time_sta)
+        # time_sta = time.time()
+
         optim.step()
-        time_end = time.time()
-        print(time_end - time_sta)
+
+        # time_end = time.time()
+        # print(time_end - time_sta)
+
         
 
     loss = float(loss)
@@ -55,7 +79,7 @@ for epoch in tqdm(range(epochs)):
     if endure > max_endure:
         break
 
-    hist.index()
+    # hist.index()
 
     hist.append(loss)
 
